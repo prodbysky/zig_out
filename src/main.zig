@@ -7,7 +7,7 @@ pub fn main() !void {
 
     var paddle = Paddle{ .pos = 100 };
     var ball = Ball{};
-    const grid = BlockGrid.init();
+    var grid = BlockGrid.init();
 
     while (!rl.windowShouldClose()) {
         paddle.update();
@@ -88,25 +88,46 @@ const Ball = struct {
         rl.drawCircleV(self.pos, Ball.radius, rl.getColor(0x00ff00ff));
     }
 
-    pub fn update(self: *Ball, paddle: *const Paddle, blocks: *const BlockGrid) void {
-        _ = blocks;
-        if (rl.checkCollisionCircleRec(self.pos, Ball.radius, .{ .x = paddle.pos, .y = Paddle.y_pos, .width = Paddle.size.x, .height = Paddle.size.y })) {
-            self.speed.y *= -1;
+    pub fn update(self: *Ball, paddle: *const Paddle, blocks: *BlockGrid) void {
+        const dt = rl.getFrameTime();
+
+        // Move the ball
+        self.pos.x += self.speed.x * dt;
+        self.pos.y += self.speed.y * dt;
+
+        // Screen edge collision
+        if (self.pos.x - Ball.radius <= 0 or self.pos.x + Ball.radius >= Global.Window.width) {
+            self.speed.x = -self.speed.x;
+        }
+        if (self.pos.y - Ball.radius <= 0) {
+            self.speed.y = -self.speed.y;
         }
 
-        if (self.pos.x - Ball.radius < 0) {
-            self.speed.x *= -1;
+        // Paddle collision
+        const paddle_rect = rl.Rectangle{
+            .x = paddle.pos,
+            .y = Paddle.y_pos,
+            .width = Paddle.size.x,
+            .height = Paddle.size.y,
+        };
+
+        if (rl.checkCollisionCircleRec(self.pos, Ball.radius, paddle_rect)) {
+            self.speed.y = -self.speed.y;
+            const hit_pos = (self.pos.x - paddle.pos) / Paddle.size.x - 0.5;
+            self.speed.x += hit_pos * 200;
         }
 
-        if (self.pos.x + Ball.radius > Global.Window.width) {
-            self.speed.x *= -1;
-        }
+        for (&blocks.blocks) |*block| {
+            if (block.width > 0 and rl.checkCollisionCircleRec(self.pos, Ball.radius, block.*)) {
+                self.speed.y = -self.speed.y;
 
-        if (self.pos.y - Ball.radius < 0) {
-            self.speed.y *= -1;
-        }
+                // Destroy the block by setting its width to 0
+                block.width = 0;
 
-        self.pos.x += self.speed.x * rl.getFrameTime();
-        self.pos.y += self.speed.y * rl.getFrameTime();
+                break;
+            }
+        }
+        self.speed.x = std.math.clamp(self.speed.x, -300, 300);
+        self.speed.y = std.math.clamp(self.speed.y, -300, 300);
     }
 };
