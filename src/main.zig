@@ -6,14 +6,17 @@ pub fn main() !void {
     defer rl.closeWindow();
 
     var paddle = Paddle{ .pos = 100 };
+    var ball = Ball{};
     const grid = BlockGrid.init();
 
     while (!rl.windowShouldClose()) {
         paddle.update();
+        ball.update(&paddle, &grid);
         rl.beginDrawing();
         rl.clearBackground(rl.getColor(0x181818ff));
         paddle.draw();
         grid.draw();
+        ball.draw();
         rl.endDrawing();
     }
 }
@@ -47,7 +50,9 @@ const BlockGrid = struct {
     }
     pub fn draw(self: *const BlockGrid) void {
         for (self.blocks, 0..) |block, idx| {
-            rl.drawRectangleRec(block, rl.getColor(0xff0000ff + @as(u32, @intCast(idx * idx * 256))));
+            const color = rl.getColor(0xcc0000ff + @as(u32, @intCast(idx * idx * 256)));
+
+            rl.drawRectangleRec(block, color);
         }
     }
 };
@@ -71,5 +76,37 @@ const Paddle = struct {
             self.pos += Paddle.speed * rl.getFrameTime();
         }
         self.pos = std.math.clamp(self.pos, 0, Global.Window.width - Paddle.size.x);
+    }
+};
+
+const Ball = struct {
+    const radius: f32 = 16;
+    speed: rl.Vector2 = .{ .x = 100, .y = 100 },
+    pos: rl.Vector2 = .{ .x = (Global.Window.width + Ball.radius) / 2, .y = (Global.Window.height + Ball.radius) / 2 },
+
+    pub fn draw(self: *const Ball) void {
+        rl.drawCircleV(self.pos, Ball.radius, rl.getColor(0x00ff00ff));
+    }
+
+    pub fn update(self: *Ball, paddle: *const Paddle, blocks: *const BlockGrid) void {
+        _ = blocks;
+        if (rl.checkCollisionCircleRec(self.pos, Ball.radius, .{ .x = paddle.pos, .y = Paddle.y_pos, .width = Paddle.size.x, .height = Paddle.size.y })) {
+            self.speed.y *= -1;
+        }
+
+        if (self.pos.x - Ball.radius < 0) {
+            self.speed.x *= -1;
+        }
+
+        if (self.pos.x + Ball.radius > Global.Window.width) {
+            self.speed.x *= -1;
+        }
+
+        if (self.pos.y - Ball.radius < 0) {
+            self.speed.y *= -1;
+        }
+
+        self.pos.x += self.speed.x * rl.getFrameTime();
+        self.pos.y += self.speed.y * rl.getFrameTime();
     }
 };
