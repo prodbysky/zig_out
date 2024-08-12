@@ -17,6 +17,7 @@ pub fn main() !void {
         paddle.draw();
         grid.draw();
         ball.draw();
+        rl.drawText(rl.textFormat("Score: %d", .{Global.score}), 10, 10, 32, rl.getColor(0xcccccccc));
         rl.endDrawing();
     }
 }
@@ -27,6 +28,7 @@ const Global = struct {
         const height: u16 = 480;
         const title: *const [7:0]u8 = "ZigOut!";
     };
+    var score: u16 = 0;
 };
 
 const BlockGrid = struct {
@@ -123,6 +125,7 @@ const Ball = struct {
 
                 // Destroy the block by setting its width to 0
                 block.width = 0;
+                Global.score += 1;
 
                 break;
             }
